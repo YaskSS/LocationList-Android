@@ -16,7 +16,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.location.places.PlaceDetectionClient;
 import com.google.android.gms.location.places.PlaceLikelihood;
 import com.google.android.gms.location.places.PlaceLikelihoodBufferResponse;
@@ -33,20 +35,23 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        placeDetectionClient = Places.getPlaceDetectionClient(this, null);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+
         getCurrentPlaceList(this);
     }
 
     public void getCurrentPlaceList(Activity activity) {
         if (isLocationProviderEnable()) {
             if (isLocationAccessPermitted(activity)) {
-                getCurrentPlaceData();
+                try {
+                    getCurrentPlaceData();
+                } catch (ApiException e) {
+                    e.printStackTrace();
+                }
             } else {
                 requestAccessPermission(activity);
             }
@@ -89,16 +94,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @SuppressLint("MissingPermission")
-    public void getCurrentPlaceData() {
+    public void getCurrentPlaceData() throws ApiException {
+        placeDetectionClient = Places.getPlaceDetectionClient(this);
         Task<PlaceLikelihoodBufferResponse> placeResult = placeDetectionClient.
                 getCurrentPlace(null);
 
         placeResult.addOnCompleteListener(new OnCompleteListener<PlaceLikelihoodBufferResponse>() {
             @Override
             public void onComplete(@NonNull Task<PlaceLikelihoodBufferResponse> task) {
-                PlaceLikelihoodBufferResponse response = task.getResult();
-                for (PlaceLikelihood place : response) {
-                    Log.i("TEST", String.valueOf(place.getPlace().getName()));
+                if (task.isSuccessful() && task.getResult() != null) {
+                    PlaceLikelihoodBufferResponse response = task.getResult();
+                    for (PlaceLikelihood place : response) {
+                        Log.i("RESPONSE PLACE", String.valueOf(place.getPlace().getName()));
+                    }
+                } else {
+                    Log.i("RESPONSE FAIL", task.getException().toString());
                 }
             }
         });
@@ -128,7 +138,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                getCurrentPlaceData();
+                try {
+                    getCurrentPlaceData();
+                } catch (ApiException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
