@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.ass_boss.locationlist.component.AppComponent;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.location.places.PlaceDetectionClient;
 import com.google.android.gms.location.places.PlaceLikelihood;
@@ -28,122 +29,37 @@ import com.google.android.gms.tasks.Task;
 
 public class MainActivity extends AppCompatActivity {
 
-    private PlaceDetectionClient placeDetectionClient;
-    private static final int REQUEST_CODE = 456;
+    private LocationHelper locationHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        locationHelper = App.getMainComponent().getLocationHelper();
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        try {
+            locationHelper.getCurrentPlaceData(this, new onLoadPlaceListCallBack() {
+                @Override
+                public void onCompleteLoad(PlaceLikelihoodBufferResponse result) {
 
-        getCurrentPlaceList(this);
-    }
-
-    public void getCurrentPlaceList(Activity activity) {
-        if (isLocationProviderEnable()) {
-            if (isLocationAccessPermitted(activity)) {
-                try {
-                    getCurrentPlaceData();
-                } catch (ApiException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                requestAccessPermission(activity);
-            }
-        } else {
-            requestLocationProvider();
-        }
-    }
-
-    private void requestLocationProvider() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        dialog.setMessage("GPS PROVIDER DISABLED");
-        dialog.setPositiveButton("Open settings", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface paramDialogInterface, int paramInt) {
-                // TODO Auto-generated method stub
-                Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                startActivity(myIntent);
-                //get gps
-            }
-        });
-        dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-
-            @Override
-            public void onClick(DialogInterface paramDialogInterface, int paramInt) {
-                // TODO Auto-generated method stub
-
-            }
-        });
-        dialog.show();
-    }
-
-    private void requestAccessPermission(Activity activity) {
-        ActivityCompat.requestPermissions(activity,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE);
-    }
-
-    public boolean isLocationAccessPermitted(Context context) {
-        return ContextCompat.checkSelfPermission(context,
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    @SuppressLint("MissingPermission")
-    public void getCurrentPlaceData() throws ApiException {
-        placeDetectionClient = Places.getPlaceDetectionClient(this);
-        Task<PlaceLikelihoodBufferResponse> placeResult = placeDetectionClient.
-                getCurrentPlace(null);
-
-        placeResult.addOnCompleteListener(new OnCompleteListener<PlaceLikelihoodBufferResponse>() {
-            @Override
-            public void onComplete(@NonNull Task<PlaceLikelihoodBufferResponse> task) {
-                if (task.isSuccessful() && task.getResult() != null) {
-                    PlaceLikelihoodBufferResponse response = task.getResult();
-                    for (PlaceLikelihood place : response) {
+                    for (PlaceLikelihood place : result) {
                         Log.i("RESPONSE PLACE", String.valueOf(place.getPlace().getName()));
                     }
-                } else {
-                    Log.i("RESPONSE FAIL", task.getException().toString());
                 }
-            }
-        });
-    }
 
-    public boolean isLocationProviderEnable() {
-
-        boolean gps_enabled = false;
-        boolean network_enabled = false;
-
-        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        try {
-            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        } catch (Exception ignored) {
-        }
-
-        try {
-            network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        } catch (Exception ignored) {
-        }
-
-        return gps_enabled && network_enabled;
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                try {
-                    getCurrentPlaceData();
-                } catch (ApiException e) {
-                    e.printStackTrace();
+                @Override
+                public void onFailLoad() {
+                    Log.i("TEST", " onFailLoad");
                 }
-            }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
